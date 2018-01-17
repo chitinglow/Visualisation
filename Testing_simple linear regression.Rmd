@@ -1,0 +1,70 @@
+---
+title: "Visualising Melbourne housing data"
+output: github_document
+---
+
+```{r, message=FALSE}
+library(tidyverse)
+library(plyr)
+library(ggplot2)
+library(PerformanceAnalytics)
+housing <- read.csv("melb_data.csv")
+#overview of the data
+glimpse(housing)
+#remove missing value
+housing <- na.omit(housing) 
+```
+
+```{r, message=FALSE, warning=FALSE}
+#data processing
+#see the summary of the data
+summary(housing)
+
+#recoding variable
+housing$Type <- mapvalues(housing$Type, from = c('h', 'u', 't', 'o'), to = c('house','unit','townhouse','other residential'))
+
+#observe the frequency of each suburd
+region <- table(housing$Type, housing$Regionname)
+region <- as.data.frame(region)
+region = rename(region, c("Var1" = "Type", "Var2" = "Region", "Freq" = "Frequency"))
+region
+#plot region frequency
+ggplot(region, aes(x = Region, y = Frequency, fill = Type)) +
+  geom_bar(stat = "identity", position = "dodge")
+
+#oberve sold method and type of house
+housing$Method <- mapvalues(housing$Method, from = c('S','SP','PI','PN','SN','NB','VB','W','SA','SS','N/A'), to = c('property sold','property sold prior','property passed in','sold prior not disclosed','sold not disclosed','no bid','vendor bid','withdrawn','sold after auction','sold after auction price not disclosed','price or highest bid not available'))
+
+method <- table(housing$Type, housing$Method)
+method <- as.data.frame(method)
+method = rename(method, c("Var1" = "Type", "Var2" = "Method", "Freq" = "Frequency"))
+method
+
+#plot
+ggplot(method, aes(x = Method, y = Frequency, fill = Type)) +
+  geom_bar(stat="identity", position = "dodge")
+```
+```{r}
+attach(housing)
+names(housing)
+
+#select variables that are relevant to real estate price
+housing1 <- select(housing,  Rooms, Price, Distance, Bathroom, Car, Landsize)
+
+#cheking correlation
+cor(housing1)
+
+#simple linear regression
+model1 <- lm(Price ~ Rooms + Distance + Bathroom + Car + Landsize, data = housing1)
+summary(model1)
+```
+
+```{r}
+#cheking residual
+qqnorm(model1$residuals)
+qqline(model1$residuals, col = 'red')
+
+#significant test
+anova(model1)
+```
+
